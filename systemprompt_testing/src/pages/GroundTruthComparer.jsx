@@ -1,155 +1,96 @@
 import React, { useState } from 'react';
-import { Target } from 'lucide-react';
+import Card from '../components/Card';
+import LoadingSpinner from '../components/LoadingSpinner';
 
-const GroundTruthComparison = () => {
-  const [comparisonConfig, setComparisonConfig] = useState({
-    groundTruthHistory: '',
-    predictionHistory: '',
-    evaluation: null,
-    recommendations: '',
-    loading: false
-  });
+const GroundTruthComparer = () => {
+    const [isLoading, setIsLoading] = useState(false);
+    const [results, setResults] = useState(null);
 
-  const simulateApiCall = (delay = 2000) => {
-    return new Promise(resolve => setTimeout(resolve, delay));
-  };
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setResults(null);
 
-  const handleGroundTruthComparison = async () => {
-    setComparisonConfig(prev => ({ ...prev, loading: true }));
-    await simulateApiCall();
-    
-    const evaluation = {
-      similarity: (Math.random() * 0.4 + 0.6).toFixed(3),
-      contextMatch: Math.random() > 0.3,
-      responseQuality: Math.floor(Math.random() * 30) + 70
+        // Simulate API call
+        setTimeout(() => {
+            setResults({
+                summary: "Prediction khá gần với Ground Truth về mặt nội dung, nhưng thiếu sự tự nhiên trong cách diễn đạt và không nắm bắt được sắc thái tình cảm của người dùng.",
+                suggestions: [
+                    "Cải thiện khả năng hiểu ngữ cảnh: Prediction cần nhận ra sự thất vọng của người dùng ở lượt thoại thứ hai.",
+                    "Sử dụng ngôn ngữ tự nhiên hơn: Thay vì 'Tiến hành hủy đơn hàng', có thể dùng 'Được ạ, tôi sẽ tiến hành hủy đơn hàng ngay cho bạn'.",
+                    "Thêm yếu tố đồng cảm: Thể hiện sự đồng cảm với vấn đề của khách hàng, ví dụ: 'Tôi rất tiếc khi nghe về sự cố này.'."
+                ]
+            });
+            setIsLoading(false);
+        }, 2000);
     };
-    
-    const recommendations = "Để prediction gần ground truth hơn:\n1. Cải thiện context understanding\n2. Tăng độ chi tiết trong câu trả lời\n3. Đảm bảo tính nhất quán trong tone và style\n4. Sử dụng thêm thông tin từ conversation history";
-    
-    setComparisonConfig(prev => ({
-      ...prev,
-      evaluation,
-      recommendations,
-      loading: false
-    }));
-  };
 
-  const TextArea = ({ value, onChange, placeholder, rows = 4 }) => (
-    <textarea
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-      rows={rows}
-      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"
-    />
-  );
+    const placeholderGroundTruth = `User: Tôi muốn kiểm tra đơn hàng #123.
+Assistant: Chào bạn, đơn hàng #123 của bạn đang trên đường vận chuyển và dự kiến giao vào ngày mai.
+User: Lại ngày mai à? Các bạn đã hứa giao hôm nay. Hủy đơn hàng cho tôi.
+Assistant: Tôi rất tiếc về sự chậm trễ này. Tôi hiểu sự thất vọng của bạn. Tôi đã tiến hành hủy đơn hàng #123 và hoàn tiền cho bạn.`;
 
-  const LoadingSpinner = () => (
-    <div className="flex items-center justify-center space-x-2">
-      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-      <span>Đang xử lý...</span>
-    </div>
-  );
+    const placeholderPrediction = `User: Tôi muốn kiểm tra đơn hàng #123.
+Assistant: Đơn hàng #123 sẽ được giao vào ngày mai.
+User: Lại ngày mai à? Các bạn đã hứa giao hôm nay. Hủy đơn hàng cho tôi.
+Assistant: Yêu cầu đã được ghi nhận. Tiến hành hủy đơn hàng #123.`;
 
-  return (
-    <div className="bg-white rounded-xl shadow-lg p-6">
-      <h3 className="text-lg font-semibold mb-4 text-gray-800">Ground Truth vs Prediction Comparison</h3>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Ground Truth Conversation History</label>
-            <TextArea
-              value={comparisonConfig.groundTruthHistory}
-              onChange={(e) => setComparisonConfig(prev => ({ ...prev, groundTruthHistory: e.target.value }))}
-              placeholder="User: Xin chào
-Assistant: Xin chào! Tôi có thể giúp gì cho bạn?
-User: Bạn có thể giải thích về AI không?
-Assistant: AI hay Trí tuệ Nhân tạo là..."
-              rows={8}
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Model Prediction History</label>
-            <TextArea
-              value={comparisonConfig.predictionHistory}
-              onChange={(e) => setComparisonConfig(prev => ({ ...prev, predictionHistory: e.target.value }))}
-              placeholder="User: Xin chào
-Assistant: Chào bạn! Tôi sẵn sàng hỗ trợ bạn.
-User: Bạn có thể giải thích về AI không?
-Assistant: AI là công nghệ mô phỏng trí tuệ con người..."
-              rows={8}
-            />
-          </div>
-          
-          <button
-            onClick={handleGroundTruthComparison}
-            disabled={comparisonConfig.loading}
-            className="w-full bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-          >
-            {comparisonConfig.loading ? <LoadingSpinner /> : (
-              <>
-                <Target size={20} />
-                <span>So sánh với Ground Truth</span>
-              </>
+    return (
+        <div>
+            <h1 className="page-title">Ground Truth Comparer</h1>
+            <p className="page-description">
+                So sánh lịch sử hội thoại do model tạo ra với một kịch bản mẫu (ground truth) để tìm điểm cải thiện.
+            </p>
+            <form onSubmit={handleSubmit}>
+                <div className="two-column-layout">
+                    <Card title="Ground Truth (Mẫu)">
+                        <div className="form-group">
+                            <label htmlFor="ground-truth">Dán lịch sử hội thoại mẫu vào đây</label>
+                            <textarea
+                                id="ground-truth"
+                                className="form-textarea"
+                                style={{ minHeight: '300px' }}
+                                defaultValue={placeholderGroundTruth}
+                            ></textarea>
+                        </div>
+                    </Card>
+                    <Card title="Prediction (Kết quả từ Model)">
+                        <div className="form-group">
+                            <label htmlFor="prediction">Dán lịch sử hội thoại của model vào đây</label>
+                            <textarea
+                                id="prediction"
+                                className="form-textarea"
+                                style={{ minHeight: '300px' }}
+                                defaultValue={placeholderPrediction}
+                            ></textarea>
+                        </div>
+                    </Card>
+                </div>
+                <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+                    <button type="submit" className="btn btn-primary" disabled={isLoading}>
+                        {isLoading ? <><LoadingSpinner /> Đang so sánh...</> : 'So sánh và Đánh giá'}
+                    </button>
+                </div>
+            </form>
+
+            {isLoading && <div style={{textAlign: 'center', marginTop: '2rem'}}><p>LLM đang phân tích...</p></div>}
+
+            {results && (
+                <div className="results-section">
+                    <Card title="Phân tích so sánh">
+                        <h4 style={{marginTop: 0}}>Tóm tắt</h4>
+                        <p>{results.summary}</p>
+                        <h4>Gợi ý cải thiện cho Prediction:</h4>
+                        <ul>
+                            {results.suggestions.map((item, index) => (
+                                <li key={index}>{item}</li>
+                            ))}
+                        </ul>
+                    </Card>
+                </div>
             )}
-          </button>
         </div>
-        
-        <div className="space-y-4">
-          {comparisonConfig.evaluation && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">Kết quả đánh giá</label>
-                <div className="grid grid-cols-1 gap-3">
-                  <div className="p-4 bg-green-50 rounded-lg">
-                    <div className="text-sm text-green-700 mb-1">Similarity Score</div>
-                    <div className="text-2xl font-bold text-green-800">{comparisonConfig.evaluation.similarity}</div>
-                    <div className="text-sm text-green-600 mt-1">Độ tương đồng tổng thể</div>
-                  </div>
-                  
-                  <div className="p-4 bg-blue-50 rounded-lg">
-                    <div className="text-sm text-blue-700 mb-1">Context Match</div>
-                    <div className="text-2xl font-bold text-blue-800">
-                      {comparisonConfig.evaluation.contextMatch ? '✓' : '✗'}
-                    </div>
-                    <div className="text-sm text-blue-600 mt-1">Phù hợp về context</div>
-                  </div>
-                  
-                  <div className="p-4 bg-purple-50 rounded-lg">
-                    <div className="text-sm text-purple-700 mb-1">Response Quality</div>
-                    <div className="text-2xl font-bold text-purple-800">
-                      {comparisonConfig.evaluation.responseQuality}/100
-                    </div>
-                    <div className="text-sm text-purple-600 mt-1">Chất lượng phản hồi</div>
-                  </div>
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Đề xuất cải thiện</label>
-                <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
-                  <div className="flex items-start">
-                    <span className="text-amber-600 mt-1 mr-2 flex-shrink-0">⚠️</span>
-                    <div className="whitespace-pre-line text-amber-800">{comparisonConfig.recommendations}</div>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-          
-          {!comparisonConfig.evaluation && (
-            <div className="flex items-center justify-center h-64 text-gray-500">
-              <div className="text-center">
-                <Target size={48} className="mx-auto mb-4 text-gray-400" />
-                <p>Nhập conversation histories và nhấn "So sánh" để xem kết quả</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+    );
 };
 
-export default GroundTruthComparison;
+export default GroundTruthComparer;
