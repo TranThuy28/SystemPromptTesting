@@ -1,29 +1,49 @@
 import React, { useState } from 'react';
 import Card from '../components/Card';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { apiService } from '../services/apiService';
 
 const SystemPromptTester = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [results, setResults] = useState(null);
+    const [error, setError] = useState(null);
 
-    const handleSubmit = (e) => {
+    // Form data state
+    const [formData, setFormData] = useState({
+        model: '',
+        systemPrompt: '',
+        userMessage: '',
+        longTermMemory: ''
+    });
+
+    const handleInputChange = (field, value) => {
+        setFormData(prev => ({
+            ...prev,
+            [field]: value
+        }));
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setIsLoading(true);
         setResults(null);
+        setError(null);
 
-        // Mô phỏng gọi API
-        setTimeout(() => {
-            setResults({
-                response: "Chào bạn, tôi là một mô hình ngôn ngữ lớn được đào tạo bởi Google. Tôi có thể giúp gì cho bạn hôm nay? Tôi nhận thấy bạn đang muốn kiểm tra khả năng của tôi trong việc duy trì một giọng văn chuyên nghiệp và hữu ích. Tôi sẽ cố gắng hết sức để đáp ứng yêu cầu của bạn.",
-                evaluation: {
-                    consistency: { score: 'Tốt', comment: 'Ngôn ngữ nhất quán, duy trì giọng điệu chuyên nghiệp và thân thiện xuyên suốt câu trả lời.' },
-                    relevance: { score: 'Xuất sắc', comment: 'Câu trả lời trực tiếp và liên quan đến vai trò được xác định trong system prompt.' },
-                    tone: { score: 'Tốt', comment: 'Giọng điệu phù hợp, thể hiện sự hữu ích và chuyên nghiệp.' },
-                    safety: { score: 'An toàn', comment: 'Không chứa nội dung gây hại hoặc không phù hợp.' }
-                }
+        try {
+            const response = await apiService.testSystemPrompt({
+                model: formData.model,
+                systemPrompt: formData.systemPrompt,
+                userMessage: formData.userMessage,
+                longTermMemory: formData.longTermMemory
             });
+
+            setResults(response);
+        } catch (err) {
+            setError(err.message || 'Có lỗi xảy ra khi gọi API');
+            console.error('API Error:', err);
+        } finally {
             setIsLoading(false);
-        }, 2000);
+        }
     };
 
     return (
@@ -32,28 +52,66 @@ const SystemPromptTester = () => {
             <p className="page-description">
                 Đánh giá hiệu quả của system prompt bằng cách nhận phản hồi từ mô hình và một LLM đánh giá khác.
             </p>
+
+            {error && (
+                <div style={{
+                    backgroundColor: '#ff6b6b',
+                    color: 'white',
+                    padding: '1rem',
+                    borderRadius: '8px',
+                    marginBottom: '1rem'
+                }}>
+                    <strong>Lỗi:</strong> {error}
+                </div>
+            )}
+
             <div className="two-column-layout">
                 <Card title="Cấu hình">
                     <form onSubmit={handleSubmit}>
                         <div className="form-group">
                             <label htmlFor="model">Chọn Model</label>
-                            <select id="model" className="form-select">
-                                <option value="gemini-4.1-nano">Gemini 4.1 Nano</option>
+                            <select 
+                                id="model" 
+                                className="form-select"
+                                value={formData.model}
+                                onChange={(e) => handleInputChange('model', e.target.value)}
+                            >
                                 <option value="gpt-4o-mini">GPT-4o Mini</option>
+                                <option value="gpt-4.1-nano">GPT 4.1 Nano</option>
                                 <option value="claude-3-sonnet">Claude 3 Sonnet</option>
                             </select>
                         </div>
                         <div className="form-group">
                             <label htmlFor="system-prompt">System Prompt</label>
-                            <textarea id="system-prompt" className="form-textarea" placeholder="Ví dụ: Bạn là một trợ lý ảo chuyên nghiệp, luôn trả lời một cách lịch sự và hữu ích."></textarea>
+                            <textarea 
+                                id="system-prompt" 
+                                className="form-textarea" 
+                                placeholder="Ví dụ: Bạn là một trợ lý ảo chuyên nghiệp, luôn trả lời một cách lịch sự và hữu ích."
+                                value={formData.systemPrompt}
+                                onChange={(e) => handleInputChange('systemPrompt', e.target.value)}
+                                required
+                            />
                         </div>
                         <div className="form-group">
                             <label htmlFor="user-message">Message của người dùng</label>
-                            <textarea id="user-message" className="form-textarea" placeholder="Ví dụ: Chào bạn, bạn là ai?"></textarea>
+                            <textarea 
+                                id="user-message" 
+                                className="form-textarea" 
+                                placeholder="Ví dụ: Chào bạn, bạn là ai?"
+                                value={formData.userMessage}
+                                onChange={(e) => handleInputChange('userMessage', e.target.value)}
+                                required
+                            />
                         </div>
                         <div className="form-group">
                             <label htmlFor="long-term-memory">Long-term Memory (Tùy chọn)</label>
-                            <textarea id="long-term-memory" className="form-textarea" placeholder="Ví dụ: Tên người dùng là An."></textarea>
+                            <textarea 
+                                id="long-term-memory" 
+                                className="form-textarea" 
+                                placeholder="Ví dụ: Tên người dùng là An."
+                                value={formData.longTermMemory}
+                                onChange={(e) => handleInputChange('longTermMemory', e.target.value)}
+                            />
                         </div>
                         <button type="submit" className="btn btn-primary" disabled={isLoading}>
                             {isLoading ? <><LoadingSpinner /> Đang xử lý...</> : 'Tạo và Đánh giá'}
@@ -62,11 +120,17 @@ const SystemPromptTester = () => {
                 </Card>
 
                 <Card title="Kết quả">
-                    {isLoading && <p>Đang chờ kết quả...</p>}
+                    {isLoading && <p>LLM đang suy nghĩ và đánh giá...</p>}
                     {results && (
                         <div className="results-section">
                             <h3 className="results-title">Phản hồi của Model</h3>
-                            <div className="result-box">
+                            <div className="result-box" style={{
+                                backgroundColor: 'var(--bg-secondary)', 
+                                padding: '1rem', 
+                                borderRadius: '8px',
+                                border: '1px solid var(--border-color)',
+                                marginBottom: '1.5rem'
+                            }}>
                                 <p>{results.response}</p>
                             </div>
 
@@ -75,18 +139,52 @@ const SystemPromptTester = () => {
                                 {Object.entries(results.evaluation).map(([key, value]) => (
                                     <div key={key} style={{ marginBottom: '1rem' }}>
                                         <strong>{key.charAt(0).toUpperCase() + key.slice(1)}: </strong>
-                                        <span className="evaluation-badge" style={{ backgroundColor: 'var(--success-color)' }}>{value.score}</span>
-                                        <p style={{ margin: '0.5rem 0 0 0', color: 'var(--light-text-color)' }}><em>{value.comment}</em></p>
+                                        <span className="evaluation-badge" style={{ 
+                                            backgroundColor: getScoreColor(value.score),
+                                            color: 'white',
+                                            padding: '0.3rem 0.8rem',
+                                            borderRadius: '4px',
+                                            fontSize: '0.9rem'
+                                        }}>
+                                            {value.score}
+                                        </span>
+                                        <p style={{ 
+                                            margin: '0.5rem 0 0 0', 
+                                            color: 'var(--light-text-color)', 
+                                            fontStyle: 'italic' 
+                                        }}>
+                                            {value.comment}
+                                        </p>
                                     </div>
                                 ))}
                             </div>
                         </div>
                     )}
-                    {!isLoading && !results && <p>Nhập thông tin và nhấn nút để xem kết quả.</p>}
+                    {!isLoading && !results && !error && (
+                        <p>Nhập thông tin và nhấn nút để xem kết quả.</p>
+                    )}
                 </Card>
             </div>
         </div>
     );
+};
+
+// Helper function để chọn màu badge dựa trên điểm số
+const getScoreColor = (score) => {
+    switch (score) {
+        case 5:
+            return '#4CAF50'; // Green
+        case 4:
+            return '#2196F3'; // Blue
+        case 3:
+            return '#FF9800'; // Orange
+        case 2:
+            return '#4CAF50'; // Green
+        case 1:
+            return '#f44336'; // Red
+        default:
+            return '#9E9E9E'; // Gray
+    }
 };
 
 export default SystemPromptTester;

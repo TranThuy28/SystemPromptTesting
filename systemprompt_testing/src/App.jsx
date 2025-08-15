@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-
+import ConnectionTest from './components/ConnectionTest';
 // Import CSS toàn cục
 import './index.css';
 

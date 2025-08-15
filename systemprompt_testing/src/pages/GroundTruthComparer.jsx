@@ -1,28 +1,41 @@
 import React, { useState } from 'react';
 import Card from '../components/Card';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { apiService } from '../services/apiService';
 
 const GroundTruthComparer = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [results, setResults] = useState(null);
+    const [error, setError] = useState(null);
 
-    const handleSubmit = (e) => {
+    // Form data state
+    const [formData, setFormData] = useState({
+        groundTruth: '',
+        prediction: ''
+    });
+
+    const handleInputChange = (field, value) => {
+        setFormData(prev => ({
+            ...prev,
+            [field]: value
+        }));
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setIsLoading(true);
         setResults(null);
+        setError(null);
 
-        // Simulate API call
-        setTimeout(() => {
-            setResults({
-                summary: "Prediction khá gần với Ground Truth về mặt nội dung, nhưng thiếu sự tự nhiên trong cách diễn đạt và không nắm bắt được sắc thái tình cảm của người dùng.",
-                suggestions: [
-                    "Cải thiện khả năng hiểu ngữ cảnh: Prediction cần nhận ra sự thất vọng của người dùng ở lượt thoại thứ hai.",
-                    "Sử dụng ngôn ngữ tự nhiên hơn: Thay vì 'Tiến hành hủy đơn hàng', có thể dùng 'Được ạ, tôi sẽ tiến hành hủy đơn hàng ngay cho bạn'.",
-                    "Thêm yếu tố đồng cảm: Thể hiện sự đồng cảm với vấn đề của khách hàng, ví dụ: 'Tôi rất tiếc khi nghe về sự cố này.'."
-                ]
-            });
+        try {
+            const response = await apiService.compareGroundTruth(formData);
+            setResults(response);
+        } catch (err) {
+            setError(err.message || 'Có lỗi xảy ra khi gọi API');
+            console.error('API Error:', err);
+        } finally {
             setIsLoading(false);
-        }, 2000);
+        }
     };
 
     const placeholderGroundTruth = `User: Tôi muốn kiểm tra đơn hàng #123.
@@ -41,6 +54,19 @@ Assistant: Yêu cầu đã được ghi nhận. Tiến hành hủy đơn hàng #
             <p className="page-description">
                 So sánh lịch sử hội thoại do model tạo ra với một kịch bản mẫu (ground truth) để tìm điểm cải thiện.
             </p>
+
+            {error && (
+                <div style={{
+                    backgroundColor: '#ff6b6b',
+                    color: 'white',
+                    padding: '1rem',
+                    borderRadius: '8px',
+                    marginBottom: '1rem'
+                }}>
+                    <strong>Lỗi:</strong> {error}
+                </div>
+            )}
+
             <form onSubmit={handleSubmit}>
                 <div className="two-column-layout">
                     <Card title="Ground Truth (Mẫu)">
@@ -50,8 +76,11 @@ Assistant: Yêu cầu đã được ghi nhận. Tiến hành hủy đơn hàng #
                                 id="ground-truth"
                                 className="form-textarea"
                                 style={{ minHeight: '300px' }}
-                                defaultValue={placeholderGroundTruth}
-                            ></textarea>
+                                placeholder={placeholderGroundTruth}
+                                value={formData.groundTruth}
+                                onChange={(e) => handleInputChange('groundTruth', e.target.value)}
+                                required
+                            />
                         </div>
                     </Card>
                     <Card title="Prediction (Kết quả từ Model)">
@@ -61,8 +90,11 @@ Assistant: Yêu cầu đã được ghi nhận. Tiến hành hủy đơn hàng #
                                 id="prediction"
                                 className="form-textarea"
                                 style={{ minHeight: '300px' }}
-                                defaultValue={placeholderPrediction}
-                            ></textarea>
+                                placeholder={placeholderPrediction}
+                                value={formData.prediction}
+                                onChange={(e) => handleInputChange('prediction', e.target.value)}
+                                required
+                            />
                         </div>
                     </Card>
                 </div>
@@ -73,24 +105,133 @@ Assistant: Yêu cầu đã được ghi nhận. Tiến hành hủy đơn hàng #
                 </div>
             </form>
 
-            {isLoading && <div style={{textAlign: 'center', marginTop: '2rem'}}><p>LLM đang phân tích...</p></div>}
+            {isLoading && (
+                <div style={{textAlign: 'center', marginTop: '2rem'}}>
+                    <p>LLM đang phân tích chi tiết...</p>
+                </div>
+            )}
 
             {results && (
                 <div className="results-section">
                     <Card title="Phân tích so sánh">
-                        <h4 style={{marginTop: 0}}>Tóm tắt</h4>
-                        <p>{results.summary}</p>
-                        <h4>Gợi ý cải thiện cho Prediction:</h4>
-                        <ul>
+                        <div style={{
+                            backgroundColor: 'var(--bg-secondary)',
+                            padding: '1.5rem',
+                            borderRadius: '8px',
+                            border: '1px solid var(--border-color)',
+                            marginBottom: '2rem'
+                        }}>
+                            <h4 style={{marginTop: 0, color: 'var(--primary-color)'}}>📊 Tóm tắt Đánh giá</h4>
+                            <p style={{lineHeight: '1.6', margin: 0}}>{results.summary}</p>
+                        </div>
+
+                        <h4 style={{color: 'var(--primary-color)'}}>💡 Gợi ý cải thiện cho Prediction:</h4>
+                        <div style={{marginTop: '1rem'}}>
                             {results.suggestions.map((item, index) => (
-                                <li key={index}>{item}</li>
+                                <div key={index} style={{
+                                    backgroundColor: 'var(--bg-secondary)',
+                                    padding: '1rem',
+                                    marginBottom: '1rem',
+                                    borderRadius: '8px',
+                                    border: '1px solid var(--border-color)',
+                                    borderLeft: '4px solid var(--primary-color)'
+                                }}>
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'flex-start',
+                                        gap: '0.8rem'
+                                    }}>
+                                        <span style={{
+                                            backgroundColor: 'var(--primary-color)',
+                                            color: 'white',
+                                            borderRadius: '50%',
+                                            width: '24px',
+                                            height: '24px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            fontSize: '0.8rem',
+                                            fontWeight: 'bold',
+                                            flexShrink: 0,
+                                            marginTop: '2px'
+                                        }}>
+                                            {index + 1}
+                                        </span>
+                                        <p style={{margin: 0, lineHeight: '1.5'}}>{item}</p>
+                                    </div>
+                                </div>
                             ))}
-                        </ul>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div style={{
+                            marginTop: '2rem',
+                            padding: '1rem',
+                            backgroundColor: 'var(--bg-secondary)',
+                            borderRadius: '8px',
+                            textAlign: 'center'
+                        }}>
+                            <h5 style={{margin: '0 0 1rem 0'}}>📋 Xuất kết quả</h5>
+                            <button 
+                                onClick={() => copyToClipboard(results)}
+                                className="btn"
+                                style={{
+                                    backgroundColor: 'var(--primary-color)',
+                                    color: 'white',
+                                    marginRight: '1rem'
+                                }}
+                            >
+                                📄 Copy kết quả
+                            </button>
+                            <button 
+                                onClick={() => downloadResults(results)}
+                                className="btn"
+                                style={{
+                                    backgroundColor: 'var(--success-color)',
+                                    color: 'white'
+                                }}
+                            >
+                                💾 Tải xuống
+                            </button>
+                        </div>
                     </Card>
                 </div>
             )}
         </div>
     );
+};
+
+// Helper functions
+const copyToClipboard = (results) => {
+    const text = `PHÂN TÍCH SO SÁNH GROUND TRUTH\n\nTóm tắt:\n${results.summary}\n\nGợi ý cải thiện:\n${results.suggestions.map((item, index) => `${index + 1}. ${item}`).join('\n')}`;
+    
+    navigator.clipboard.writeText(text).then(() => {
+        alert('Đã copy kết quả vào clipboard!');
+    }).catch(err => {
+        console.error('Lỗi copy:', err);
+    });
+};
+
+const downloadResults = (results) => {
+    const content = `PHÂN TÍCH SO SÁNH GROUND TRUTH
+Generated: ${new Date().toLocaleString('vi-VN')}
+
+TÓM TẮT:
+${results.summary}
+
+GỢI Ý CẢI THIỆN:
+${results.suggestions.map((item, index) => `${index + 1}. ${item}`).join('\n\n')}
+`;
+    
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ground-truth-analysis-${new Date().getTime()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 };
 
 export default GroundTruthComparer;
